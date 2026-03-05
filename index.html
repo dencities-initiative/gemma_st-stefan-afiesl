@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/MarkerCluster.css">
+        <link rel="stylesheet" href="css/MarkerCluster.Default.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="js/leaflet.markercluster.js"></script>
+        <script src="data/gemma_kataster_1.js"></script>
+        <script src="data/gemma_gebaeude_2.js"></script>
+        <script src="data/GWR_abbruchgebaeude_3.js"></script>
+        <script src="data/GWR_offeneobjnr_4.js"></script>
+        <script>
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        })
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+            map.setMaxBounds(map.getBounds());
+            map.setMinZoom(map.getZoom());
+        }
+        map.createPane('pane_ORTHOFOTO_0');
+        map.getPane('pane_ORTHOFOTO_0').style.zIndex = 400;
+        var layer_ORTHOFOTO_0 = L.tileLayer('https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg', {
+            pane: 'pane_ORTHOFOTO_0',
+            opacity: 1.0,
+            attribution: '<a href="https://basemap.at/">Data source: <a href="https://www.basemap.at/">www.basemap.at</a></a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_ORTHOFOTO_0;
+        map.addLayer(layer_ORTHOFOTO_0);
+        function pop_gemma_kataster_1(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['KG'] !== null ? autolinker.link(String(feature.properties['KG']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['GNR'] !== null ? autolinker.link(String(feature.properties['GNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['RSTATUS'] !== null ? autolinker.link(String(feature.properties['RSTATUS']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['MST'] !== null ? autolinker.link(String(feature.properties['MST']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['KG-GNR'] !== null ? autolinker.link(String(feature.properties['KG-GNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['EZ'] !== null ? autolinker.link(String(feature.properties['EZ']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['KENNZAHL'] !== null ? autolinker.link(String(feature.properties['KENNZAHL']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_gemma_kataster_1_0() {
+            return {
+                pane: 'pane_gemma_kataster_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,255,0.42745098039215684)',
+                interactive: false,
+            }
+        }
+        map.createPane('pane_gemma_kataster_1');
+        map.getPane('pane_gemma_kataster_1').style.zIndex = 401;
+        map.getPane('pane_gemma_kataster_1').style['mix-blend-mode'] = 'normal';
+        var layer_gemma_kataster_1 = new L.geoJson(json_gemma_kataster_1, {
+            attribution: '',
+            interactive: false,
+            dataVar: 'json_gemma_kataster_1',
+            layerName: 'layer_gemma_kataster_1',
+            pane: 'pane_gemma_kataster_1',
+            onEachFeature: pop_gemma_kataster_1,
+            style: style_gemma_kataster_1_0,
+        });
+        bounds_group.addLayer(layer_gemma_kataster_1);
+        map.addLayer(layer_gemma_kataster_1);
+        function pop_gemma_gebaeude_2(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">KG-GNR</th>\
+                        <td class="visible-with-data" id="KG-GNR">' + (feature.properties['KG-GNR'] !== null ? autolinker.link(String(feature.properties['KG-GNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">b_id</th>\
+                        <td class="visible-with-data" id="b_id">' + (feature.properties['b_id'] !== null ? autolinker.link(String(feature.properties['b_id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">OBJNR</th>\
+                        <td class="visible-with-data" id="OBJNR">' + (feature.properties['OBJNR'] !== null ? autolinker.link(String(feature.properties['OBJNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Level</th>\
+                        <td class="visible-with-data" id="Level">' + (feature.properties['Level'] !== null ? autolinker.link(String(feature.properties['Level']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Year_built</th>\
+                        <td class="visible-with-data" id="Year_built">' + (feature.properties['Year_built'] !== null ? autolinker.link(String(feature.properties['Year_built']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">source</th>\
+                        <td class="visible-with-data" id="source">' + (feature.properties['source'] !== null ? autolinker.link(String(feature.properties['source']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">EZ</th>\
+                        <td class="visible-with-data" id="EZ">' + (feature.properties['EZ'] !== null ? autolinker.link(String(feature.properties['EZ']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">WID</th>\
+                        <td class="visible-with-data" id="WID">' + (feature.properties['WID'] !== null ? autolinker.link(String(feature.properties['WID']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_gemma_gebaeude_2_0(feature) {
+            switch(String(feature.properties['Level'])) {
+                case '0':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(230,230,230,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '1':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(230,230,230,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '2':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(230,230,230,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '3':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(230,230,230,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '4':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(230,230,230,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '5':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(230,230,230,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '6':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(230,230,230,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '7':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(230,230,230,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '8':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(201,157,180,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '9':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,158,23,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '10':
+                    return {
+                pane: 'pane_gemma_gebaeude_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(178,223,138,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_gemma_gebaeude_2');
+        map.getPane('pane_gemma_gebaeude_2').style.zIndex = 402;
+        map.getPane('pane_gemma_gebaeude_2').style['mix-blend-mode'] = 'normal';
+        var layer_gemma_gebaeude_2 = new L.geoJson(json_gemma_gebaeude_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_gemma_gebaeude_2',
+            layerName: 'layer_gemma_gebaeude_2',
+            pane: 'pane_gemma_gebaeude_2',
+            onEachFeature: pop_gemma_gebaeude_2,
+            style: style_gemma_gebaeude_2_0,
+        });
+        bounds_group.addLayer(layer_gemma_gebaeude_2);
+        map.addLayer(layer_gemma_gebaeude_2);
+        function pop_GWR_abbruchgebaeude_3(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">KG-GNR</th>\
+                        <td class="visible-with-data" id="KG-GNR">' + (feature.properties['KG-GNR'] !== null ? autolinker.link(String(feature.properties['KG-GNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">STROFFI</th>\
+                        <td class="visible-with-data" id="STROFFI">' + (feature.properties['STROFFI'] !== null ? autolinker.link(String(feature.properties['STROFFI']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">HNR1</th>\
+                        <td class="visible-with-data" id="HNR1">' + (feature.properties['HNR1'] !== null ? autolinker.link(String(feature.properties['HNR1']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">OBJNR</th>\
+                        <td class="visible-with-data" id="OBJNR">' + (feature.properties['OBJNR'] !== null ? autolinker.link(String(feature.properties['OBJNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">BAUPERIODE</th>\
+                        <td class="visible-with-data" id="BAUPERIODE">' + (feature.properties['BAUPERIODE'] !== null ? autolinker.link(String(feature.properties['BAUPERIODE']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">GEBUNTERSCHIED</th>\
+                        <td class="visible-with-data" id="GEBUNTERSCHIED">' + (feature.properties['GEBUNTERSCHIED'] !== null ? autolinker.link(String(feature.properties['GEBUNTERSCHIED']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">FLUEBERBAUT</th>\
+                        <td class="visible-with-data" id="FLUEBERBAUT">' + (feature.properties['FLUEBERBAUT'] !== null ? autolinker.link(String(feature.properties['FLUEBERBAUT']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_GWR_abbruchgebaeude_3_0() {
+            return {
+                pane: 'pane_GWR_abbruchgebaeude_3',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(229,182,54,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_GWR_abbruchgebaeude_3');
+        map.getPane('pane_GWR_abbruchgebaeude_3').style.zIndex = 403;
+        map.getPane('pane_GWR_abbruchgebaeude_3').style['mix-blend-mode'] = 'normal';
+        var layer_GWR_abbruchgebaeude_3 = new L.geoJson(json_GWR_abbruchgebaeude_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_GWR_abbruchgebaeude_3',
+            layerName: 'layer_GWR_abbruchgebaeude_3',
+            pane: 'pane_GWR_abbruchgebaeude_3',
+            onEachFeature: pop_GWR_abbruchgebaeude_3,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_GWR_abbruchgebaeude_3_0(feature));
+            },
+        });
+        var cluster_GWR_abbruchgebaeude_3 = new L.MarkerClusterGroup({showCoverageOnHover: false,
+            spiderfyDistanceMultiplier: 2});
+        cluster_GWR_abbruchgebaeude_3.addLayer(layer_GWR_abbruchgebaeude_3);
+
+        bounds_group.addLayer(layer_GWR_abbruchgebaeude_3);
+        cluster_GWR_abbruchgebaeude_3.addTo(map);
+        function pop_GWR_offeneobjnr_4(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">addr_std</th>\
+                        <td class="visible-with-data" id="addr_std">' + (feature.properties['addr_std'] !== null ? autolinker.link(String(feature.properties['addr_std']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">OBJNR</th>\
+                        <td class="visible-with-data" id="OBJNR">' + (feature.properties['OBJNR'] !== null ? autolinker.link(String(feature.properties['OBJNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">BAUPERIODE</th>\
+                        <td class="visible-with-data" id="BAUPERIODE">' + (feature.properties['BAUPERIODE'] !== null ? autolinker.link(String(feature.properties['BAUPERIODE']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">GEBUNTERSCHIED</th>\
+                        <td class="visible-with-data" id="GEBUNTERSCHIED">' + (feature.properties['GEBUNTERSCHIED'] !== null ? autolinker.link(String(feature.properties['GEBUNTERSCHIED']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">FLUEBERBAUT</th>\
+                        <td class="visible-with-data" id="FLUEBERBAUT">' + (feature.properties['FLUEBERBAUT'] !== null ? autolinker.link(String(feature.properties['FLUEBERBAUT']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">KENNZAHL</th>\
+                        <td class="visible-with-data" id="KENNZAHL">' + (feature.properties['KENNZAHL'] !== null ? autolinker.link(String(feature.properties['KENNZAHL']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_GWR_offeneobjnr_4_0(feature) {
+            switch(String(feature.properties['KENNZAHL'])) {
+                case '11':
+                    return {
+                pane: 'pane_GWR_offeneobjnr_4',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(227,26,67,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '13':
+                    return {
+                pane: 'pane_GWR_offeneobjnr_4',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(96,234,50,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_GWR_offeneobjnr_4');
+        map.getPane('pane_GWR_offeneobjnr_4').style.zIndex = 404;
+        map.getPane('pane_GWR_offeneobjnr_4').style['mix-blend-mode'] = 'normal';
+        var layer_GWR_offeneobjnr_4 = new L.geoJson(json_GWR_offeneobjnr_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_GWR_offeneobjnr_4',
+            layerName: 'layer_GWR_offeneobjnr_4',
+            pane: 'pane_GWR_offeneobjnr_4',
+            onEachFeature: pop_GWR_offeneobjnr_4,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_GWR_offeneobjnr_4_0(feature));
+            },
+        });
+        var cluster_GWR_offeneobjnr_4 = new L.MarkerClusterGroup({showCoverageOnHover: false,
+            spiderfyDistanceMultiplier: 2});
+        cluster_GWR_offeneobjnr_4.addLayer(layer_GWR_offeneobjnr_4);
+
+        bounds_group.addLayer(layer_GWR_offeneobjnr_4);
+        cluster_GWR_offeneobjnr_4.addTo(map);
+        var overlaysTree = [
+            {label: 'GWR_offene-objnr<br /><table><tr><td style="text-align: center;"><img src="legend/GWR_offeneobjnr_4_Bauland0.png" /></td><td>Bauland</td></tr><tr><td style="text-align: center;"><img src="legend/GWR_offeneobjnr_4_Gruenland1.png" /></td><td>Gruenland</td></tr></table>', layer: cluster_GWR_offeneobjnr_4},
+            {label: '<img src="legend/GWR_abbruchgebaeude_3.png" /> GWR_abbruchgebaeude', layer: cluster_GWR_abbruchgebaeude_3},
+            {label: 'gemma_gebaeude<br /><table><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe0MANUELL0.png" /></td><td>Stufe0_MANUELL</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe1DLM1.png" /></td><td>Stufe1_DLM</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe2ML2.png" /></td><td>Stufe2_ML</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe31zu13.png" /></td><td>Stufe3_1zu1</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe4OSM4.png" /></td><td>Stufe4_OSM</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe5RWHW5.png" /></td><td>Stufe5_RW-HW</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe6GST6.png" /></td><td>Stufe6_GST</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe7NFL7.png" /></td><td>Stufe7_NFL</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe8EZWID8.png" /></td><td>Stufe8_EZ-WID</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe9NULL9.png" /></td><td>Stufe9_NULL</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe10NULLG10.png" /></td><td>Stufe10_NULL_G</td></tr></table>', layer: layer_gemma_gebaeude_2},
+            {label: '<img src="legend/gemma_kataster_1.png" /> gemma_kataster', layer: layer_gemma_kataster_1},
+            {label: "ORTHOFOTO", layer: layer_ORTHOFOTO_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: false, 
+        });
+        lay.addTo(map);
+		document.addEventListener("DOMContentLoaded", function() {
+            // set new Layers List height which considers toggle icon
+            function newLayersListHeight() {
+                var layerScrollbarElement = document.querySelector('.leaflet-control-layers-scrollbar');
+                if (layerScrollbarElement) {
+                    var layersListElement = document.querySelector('.leaflet-control-layers-list');
+                    var originalHeight = layersListElement.style.height 
+                        || window.getComputedStyle(layersListElement).height;
+                    var newHeight = parseFloat(originalHeight) - 50;
+                    layersListElement.style.height = newHeight + 'px';
+                }
+            }
+            var isLayersListExpanded = true;
+            var controlLayersElement = document.querySelector('.leaflet-control-layers');
+            var toggleLayerControl = document.querySelector('.leaflet-control-layers-toggle');
+            // toggle Collapsed/Expanded and apply new Layers List height
+            toggleLayerControl.addEventListener('click', function() {
+                if (isLayersListExpanded) {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                } else {
+                    controlLayersElement.classList.add('leaflet-control-layers-expanded');
+                }
+                isLayersListExpanded = !isLayersListExpanded;
+                newLayersListHeight()
+            });	
+			// apply new Layers List height if toggle layerstree
+			if (controlLayersElement) {
+				controlLayersElement.addEventListener('click', function(event) {
+					var toggleLayerHeaderPointer = event.target.closest('.leaflet-layerstree-header-pointer span');
+					if (toggleLayerHeaderPointer) {
+						newLayersListHeight();
+					}
+				});
+			}
+            // Collapsed/Expanded at Start to apply new height
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            // Collapsed touch/small screen
+            var isSmallScreen = window.innerWidth < 650;
+            if (isSmallScreen) {
+                setTimeout(function() {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                    isLayersListExpanded = !isLayersListExpanded;
+                }, 500);
+            }  
+        });       
+        setBounds();
+        </script>        
+    </body>
+</html>
