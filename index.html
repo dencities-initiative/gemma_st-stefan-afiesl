@@ -43,6 +43,21 @@
         <script src="data/GWR_abbruchgebaeude_3.js"></script>
         <script src="data/GWR_offeneobjnr_4.js"></script>
         <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString' || e.target.feature.geometry.type === 'MultiLineString') {
+              highlightLayer.setStyle({
+                color: 'rgba(255, 255, 0, 1.00)',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: 'rgba(255, 255, 0, 1.00)',
+                fillOpacity: 1
+              });
+            }
+        }
         var map = L.map('map', {
             zoomControl:false, maxZoom:28, minZoom:1
         })
@@ -135,6 +150,16 @@
         layer_ORTHOFOTO_0;
         map.addLayer(layer_ORTHOFOTO_0);
         function pop_gemma_kataster_1(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                },
+                mouseover: highlightFeature,
+            });
             var popupContent = '<table>\
                     <tr>\
                         <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
@@ -162,6 +187,9 @@
                     </tr>\
                     <tr>\
                         <td colspan="2">' + (feature.properties['KENNZAHL'] !== null ? autolinker.link(String(feature.properties['KENNZAHL']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['area'] !== null ? autolinker.link(String(feature.properties['area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
                 </table>';
             var content = removeEmptyRowsFromPopupContent(popupContent, feature);
@@ -201,10 +229,24 @@
         bounds_group.addLayer(layer_gemma_kataster_1);
         map.addLayer(layer_gemma_kataster_1);
         function pop_gemma_gebaeude_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                },
+                mouseover: highlightFeature,
+            });
             var popupContent = '<table>\
                     <tr>\
                         <th scope="row">KG-GNR</th>\
                         <td class="visible-with-data" id="KG-GNR">' + (feature.properties['KG-GNR'] !== null ? autolinker.link(String(feature.properties['KG-GNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">addr_std</th>\
+                        <td class="visible-with-data" id="addr_std">' + (feature.properties['addr_std'] !== null ? autolinker.link(String(feature.properties['addr_std']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
                     <tr>\
                         <th scope="row">b_id</th>\
@@ -215,8 +257,8 @@
                         <td class="visible-with-data" id="OBJNR">' + (feature.properties['OBJNR'] !== null ? autolinker.link(String(feature.properties['OBJNR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
                     <tr>\
-                        <th scope="row">Level</th>\
-                        <td class="visible-with-data" id="Level">' + (feature.properties['Level'] !== null ? autolinker.link(String(feature.properties['Level']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                        <th scope="row">Stufe</th>\
+                        <td class="visible-with-data" id="Stufe">' + (feature.properties['Stufe'] !== null ? autolinker.link(String(feature.properties['Stufe']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
                     <tr>\
                         <th scope="row">Year_built</th>\
@@ -243,7 +285,7 @@
         }
 
         function style_gemma_gebaeude_2_0(feature) {
-            switch(String(feature.properties['Level'])) {
+            switch(String(feature.properties['Stufe'])) {
                 case '0':
                     return {
                 pane: 'pane_gemma_gebaeude_2',
@@ -255,7 +297,7 @@
                 weight: 1.0, 
                 fill: true,
                 fillOpacity: 1,
-                fillColor: 'rgba(230,230,230,1.0)',
+                fillColor: 'rgba(127,254,254,1.0)',
                 interactive: true,
             }
                     break;
@@ -426,6 +468,16 @@
         bounds_group.addLayer(layer_gemma_gebaeude_2);
         map.addLayer(layer_gemma_gebaeude_2);
         function pop_GWR_abbruchgebaeude_3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                },
+                mouseover: highlightFeature,
+            });
             var popupContent = '<table>\
                     <tr>\
                         <th scope="row">KG-GNR</th>\
@@ -497,13 +549,19 @@
                 return L.circleMarker(latlng, style_GWR_abbruchgebaeude_3_0(feature));
             },
         });
-        var cluster_GWR_abbruchgebaeude_3 = new L.MarkerClusterGroup({showCoverageOnHover: false,
-            spiderfyDistanceMultiplier: 2});
-        cluster_GWR_abbruchgebaeude_3.addLayer(layer_GWR_abbruchgebaeude_3);
-
         bounds_group.addLayer(layer_GWR_abbruchgebaeude_3);
-        cluster_GWR_abbruchgebaeude_3.addTo(map);
+        map.addLayer(layer_GWR_abbruchgebaeude_3);
         function pop_GWR_offeneobjnr_4(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                },
+                mouseover: highlightFeature,
+            });
             var popupContent = '<table>\
                     <tr>\
                         <th scope="row">addr_std</th>\
@@ -599,7 +657,7 @@
         cluster_GWR_offeneobjnr_4.addTo(map);
         var overlaysTree = [
             {label: 'GWR_offene-objnr<br /><table><tr><td style="text-align: center;"><img src="legend/GWR_offeneobjnr_4_Bauland0.png" /></td><td>Bauland</td></tr><tr><td style="text-align: center;"><img src="legend/GWR_offeneobjnr_4_Gruenland1.png" /></td><td>Gruenland</td></tr></table>', layer: cluster_GWR_offeneobjnr_4},
-            {label: '<img src="legend/GWR_abbruchgebaeude_3.png" /> GWR_abbruchgebaeude', layer: cluster_GWR_abbruchgebaeude_3},
+            {label: '<img src="legend/GWR_abbruchgebaeude_3.png" /> GWR_abbruchgebaeude', layer: layer_GWR_abbruchgebaeude_3},
             {label: 'gemma_gebaeude<br /><table><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe0MANUELL0.png" /></td><td>Stufe0_MANUELL</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe1DLM1.png" /></td><td>Stufe1_DLM</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe2ML2.png" /></td><td>Stufe2_ML</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe31zu13.png" /></td><td>Stufe3_1zu1</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe4OSM4.png" /></td><td>Stufe4_OSM</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe5RWHW5.png" /></td><td>Stufe5_RW-HW</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe6GST6.png" /></td><td>Stufe6_GST</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe7NFL7.png" /></td><td>Stufe7_NFL</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe8EZWID8.png" /></td><td>Stufe8_EZ-WID</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe9NULL9.png" /></td><td>Stufe9_NULL</td></tr><tr><td style="text-align: center;"><img src="legend/gemma_gebaeude_2_Stufe10NULLG10.png" /></td><td>Stufe10_NULL_G</td></tr></table>', layer: layer_gemma_gebaeude_2},
             {label: '<img src="legend/gemma_kataster_1.png" /> gemma_kataster', layer: layer_gemma_kataster_1},
             {label: "ORTHOFOTO", layer: layer_ORTHOFOTO_0},]
